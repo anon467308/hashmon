@@ -1,5 +1,8 @@
+Randomized First-Order Monitoring With Hashing
+==============================================
+
 I. SYNOPSIS
-===========
+-----------
 
 This artifact accompanies the paper "Randomized First-Order Monitoring With
 Hashing" submitted to CAV 2022. It provides (1) the full source code of the
@@ -9,7 +12,7 @@ paper.
 
 
 II. CONTENT
-===========
+-----------
 
 The `artifact` folder is structured as follows.
 
@@ -60,7 +63,7 @@ The `artifact` folder is structured as follows.
 
 
 III. FORMAT OF THE EXAMPLE EXPRESSIONS
-======================================
+--------------------------------------
 
 The monitor program reads specifications expressed in metric first-order
 temporal logic (MFOTL) and this is therefore the language used by the
@@ -88,10 +91,9 @@ of unfolding does not affect the sharing of data structures in the monitor.
 
 
 IV. REPLICATION
-===============
+---------------
 
-1. Environment
---------------
+### 1. Environment
 
 This artifact has been tested on a 64-bit Linux system with at least the
 following software installed:
@@ -136,8 +138,7 @@ part of the command) must be executed in a terminal with the `artifact` folder
 as the current working directory.
 
 
-2. Preparation
---------------
+### 2. Preparation
 
 Run the commands
 
@@ -152,8 +153,7 @@ newly created `traces` folder.
 You may want to disable swap on your system. This might make the memory
 measurements more accurate.
 
-4. Running the experiments
---------------------------
+### 3. Running the experiments
 
 Run
 
@@ -202,8 +202,7 @@ modifications to run other subsets or variants of the experiments. The sample
 count in the 'accuracy' experiments should not be reduced further, however, as
 the uncertainty about the observed error probabilities would become too large.
 
-5. Post-processing
-------------------
+### 4. Post-processing
 
 Given that perf.csv has been created, the command
 
@@ -216,8 +215,7 @@ as explained above. Given that accuracy.csv has been created, the command
 
 produces a file accuracy.png with a plot similar to Figure 1.
 
-6. Inspecting the examples
---------------------------
+### 5. Inspecting the examples
 
 It is possible to inspect the rewritten TRA expressions for each example.
 To this end, run
@@ -242,7 +240,7 @@ from the paper for simplicity.)
 
 
 V. RUNNING THE MONITOR
-======================
+----------------------
 
 This artifact comes with a fully functional monitor that can be used
 independently of the performance and accuracy experiments. After the code has
