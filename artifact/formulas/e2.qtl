@@ -1,0 +1,1 @@
+prop e2 : ! (Exists a . ((! p(a)) S[<=9] q(a)))

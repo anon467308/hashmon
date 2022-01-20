@@ -1,0 +1,12 @@
+                            memory                            memory_ratio                     time                           time_ratio                       fp            fn       
+mode                        dejavu bypass   off single merged       dejavu off single merged dejavu bypass  off single merged     dejavu off single merged single merged single merged
+type formula rate    strlen                                                                                                                                                           
+a    ex1     0.0     0         n/a   13.7  13.7   12.9   12.0          n/a -0%    -6%   -12%    n/a   20.5 20.3   17.2   17.2        n/a -1%   -16%   -16%  9e-06  1e-05  9e-06  1e-05
+     frd     0.0     0         n/a   35.4  39.6   28.8   23.9          n/a 12%   -19%   -33%    n/a   22.7 22.8   22.4   22.2        n/a  0%    -1%    -2%  1e-10  2e-10  1e-10  2e-10
+m    e1      20000.0 100       n/a   81.0  74.7   63.1   63.3          n/a -8%   -22%   -22%    n/a   12.5 12.7   14.3   14.3        n/a  2%    14%    14%  2e-10  3e-10  0e+00  0e+00
+     e2      20000.0 100       n/a   56.0  56.0   44.5   44.6          n/a  0%   -21%   -20%    n/a   28.9 27.6   26.1   26.1        n/a -4%   -10%    -9%  0e+00  0e+00  1e-09  1e-09
+     e3      20000.0 100       n/a   80.9 104.2   81.0   81.1          n/a 29%     0%     0%    n/a    9.3 10.9   15.9   15.9        n/a 17%    70%    70%  1e-09  1e-09  2e-10  3e-10
+     e3_let  20000.0 100       n/a   80.8  81.0   56.1   56.4          n/a  0%   -31%   -30%    n/a    9.7 10.3   12.7   12.7        n/a  6%    31%    31%  1e-09  1e-09  2e-10  3e-10
+     e4      50.0    100       n/a   30.3  47.3   50.0   37.7          n/a 56%    65%    24%    n/a   12.0 13.4   12.8   14.3        n/a 12%     7%    19%  1e-09  2e-09  0e+00  0e+00
+s    e1      2000.0  100     983.8   26.0   n/a    n/a   26.2        3677% n/a    n/a     1%   14.8    2.2  n/a    n/a    2.4       569% n/a    n/a    10%    n/a  3e-15    n/a  0e+00
+     e2      2000.0  100     972.1   13.2   n/a    n/a   12.1        7281% n/a    n/a    -8%   18.9 1533.2  n/a    n/a 1199.9       -99% n/a    n/a   -22%    n/a  0e+00    n/a  2e-11

@@ -1,0 +1,5 @@
+LET rb(rid,pid,rating,b) = r(rid,_,pid,_,rating,_,_,_) AND ONCE p(pid,b,_) IN
+EXISTS n1, n2.
+  (n1 <- CNT rid; b ONCE[0d,6d] rb(rid,pid,rating,b)) AND
+  (n2 <- CNT rid; b ONCE[7d,27d] rb(rid,pid,rating,b)) AND
+  n1 >= 3 * n2

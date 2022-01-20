@@ -1,0 +1,2 @@
+LET q(a,b) = q(a,b) IN
+EXISTS a,b. ((p(a) UNTIL [0,9] q(a,b)) AND NOT q(a,b))

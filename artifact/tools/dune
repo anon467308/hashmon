@@ -1,0 +1,23 @@
+(executable
+  (name generate)
+  (modules generate))
+(library
+  (name toollib)
+  (libraries unix)
+  (modules util verdict_lexer verdict)
+  (wrapped false))
+(executable
+  (name diff)
+  (libraries toollib)
+  (modules diff))
+(executable
+  (name extract)
+  (libraries toollib)
+  (modules extract))
+
+(ocamllex verdict_lexer)
+
+(tests
+  (names test)
+  (libraries toollib)
+  (modules test))

@@ -1,0 +1,70 @@
+(* This formula implements a simplified version of the "spam review detection"
+   described in the article
+
+   A. Heydari, M. Tavakoli, N. Salim (2016): Detection of fake opinions using
+   time series. Expert Systems with Applications 58:83-92.
+
+   In this version, only the temporal pattern "Temp2", with a fixed window size
+   of 7 days, is implemented here. Moreover, we compute the long-term average
+   review count over a one-year sliding window, and not over the entire dataset.
+
+   The output is the pairs of window start time-stamp (wts) and brand (pb)
+   identified as possible targets of spam reviews.
+
+   Interpretation of ambiguous or unclear specifications:
+   - tumbling window instead of sliding window (they write the latter, but the
+     formulas and examples point towards the former)
+   - compute average review count *per brand*
+*)
+
+(* extract relevant data *)
+LET window(wid) = EXISTS t. ts(t) AND wid = (f2i(t) / 604800) (* 7 days *) IN
+LET product(pid, pb) = ONCE EXISTS pn. p(pid, pb, pn) IN
+LET review(pid, rid, rt, rr, pb) =
+  (EXISTS rn, rv, rh, rs. r(rid, rn, pid, rv, rr, rh, rs, rt))
+  AND product(pid, pb)
+IN
+
+(* average reviews per interval and brand *)
+LET brand_review(pb) = (EXISTS pid, rid, rt, rr. review(pid, rid, rt, rr, pb)) IN
+LET brand_first(pb, wid) =
+  ONCE (brand_review(pb)
+        AND NOT (PREVIOUS ONCE brand_review(pb))
+        AND window(wid))
+IN
+LET avg(pb, a) =
+  (EXISTS wid1, widn, n.
+    brand_first(pb, wid1)
+    AND window(widn)
+    AND (n <- CNT rid; pb ONCE[0,365d] review(pid, rid, rt, rr, pb))
+    AND a = i2f(n) / i2f(widn - wid1 + 1))
+IN
+
+(* compute number of reviews per brand over tumbling window *)
+LET num_reviews_slide(wid, pb, n) =
+  n <- CNT rid; wid, pb ONCE[0,7d)
+    (window(wid) AND review(pid, rid, rt, rr, pb))
+IN
+LET num_reviews_tumble(wid, pb, n) =
+  (EXISTS nwid. window(wid) AND (NEXT window(nwid)) AND NOT wid = nwid)
+  AND num_reviews_slide(wid, pb, n)
+IN
+
+(* detect pattern Temp2, select intervals above average *)
+LET temp2(wid2, pb) =
+  EXISTS wid1, wid3, n1, n2, n3.
+    (EXISTS a.
+      num_reviews_tumble(wid2, pb, n2)
+      AND avg(pb, a)
+      AND i2f(n2) >= a)
+    AND (ONCE[0,14d] num_reviews_tumble(wid1, pb, n1))
+    AND wid1 = wid2 - 1
+    AND n1 < n2
+    AND (EVENTUALLY[0,14d] num_reviews_tumble(wid3, pb, n3))
+    AND wid3 = wid2 + 1
+    AND n2 > n3
+IN
+
+(* reconstruct window time-stamp *)
+LET temp2_ts(wts, pb) = EXISTS wid. temp2(wid, pb) AND wts = wid * 604800 IN
+temp2_ts(0_wts, 1_pb)

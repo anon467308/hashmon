@@ -1,0 +1,246 @@
+(*
+ * This file is part of MONPOLY.
+ *
+ * Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
+ * Contact:  Nokia Corporation (Debmalya Biswas: debmalya.biswas@nokia.com)
+ *
+ * Copyright (C) 2012 ETH Zurich.
+ * Contact:  ETH Zurich (Eugen Zalinescu: eugen.zalinescu@inf.ethz.ch)
+ *
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public License
+ * as published by the Free Software Foundation, version 2.1 of the
+ * License.
+ *
+ * This library is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library. If not, see
+ * http://www.gnu.org/licenses/lgpl-2.1.html.
+ *
+ * As a special exception to the GNU Lesser General Public License,
+ * you may link, statically or dynamically, a "work that uses the
+ * Library" with a publicly distributed version of the Library to
+ * produce an executable file containing portions of the Library, and
+ * distribute that executable file under terms of your choice, without
+ * any of the additional requirements listed in clause 6 of the GNU
+ * Lesser General Public License. By "a publicly distributed version
+ * of the Library", we mean either the unmodified Library as
+ * distributed by Nokia, or a modified version of the Library that is
+ * distributed under the conditions defined in clause 3 of the GNU
+ * Lesser General Public License. This exception does not however
+ * invalidate any other reasons why the executable file might be
+ * covered by the GNU Lesser General Public License.
+ *)
+
+
+
+open Misc
+open Predicate
+open MFOTL
+open Formula_parser
+open Lexing
+open Algorithm
+open Log
+open Rewriting
+
+
+(********** testing *************)
+
+
+let usage_string =
+  "Usage: monpoly [options...] -sig <file> -formula <file> [-negate] [-log <file>]"
+
+let formulafile = ref ""
+
+let analyze_formulafile () =
+  let ic = open_in !formulafile in
+  try
+    let f = Formula_parser.formula Formula_lexer.token (Lexing.from_channel ic) in
+    if Misc.debugging Dbg_all then
+      Printf.eprintf "[Main.main] The formula file was parsed correctly.\n";
+    f
+  with e -> Printf.eprintf "[Main.main] Failed to parse formula file\n"; raise e
+
+
+
+
+
+let logfile = ref ""
+let sigfile = ref ""
+let debug = ref ""
+
+let slicer_file = ref ""
+
+let negate = ref false
+let inc = ref false
+let memarg = ref false
+let sigout = ref false
+let statsarg = ref false
+
+let testfilteropt = ref false
+let nofilteremptytpopt = ref false
+let nofilterrelopt = ref false
+
+let analyze_hashing = ref false
+let hashing_mode = ref None
+
+(* Printexc.record_backtrace true;; *)
+
+let starttime = Unix.time()
+
+
+let sigusr1_handler =
+  (Sys.Signal_handle
+     (fun _ ->
+        print_endline "SIGUSR1 handler: exiting...";
+        exit 0))
+
+let sigusr2_handler =
+  (Sys.Signal_handle
+     (fun _ -> Misc.usr2 := true ))
+
+let sigalrm_handler =
+  (Sys.Signal_handle
+     (fun _ -> Misc.alrm := true ))
+
+
+let displayver = ref false
+
+let print_banner () =
+  let banner =
+    match Build_info.V1.version () with
+    | None -> "MonPoly (development build)"
+    | Some v -> "MonPoly, version " ^ Build_info.V1.Version.to_string v
+  in
+  print_endline banner
+
+let main () =
+  Sys.set_signal Sys.sigusr1 sigusr1_handler;
+  Sys.set_signal Sys.sigusr2 sigusr2_handler;
+  Sys.set_signal Sys.sigalrm sigalrm_handler;
+
+  Misc.split_debug !debug;
+
+  if !displayver then
+    print_banner ()
+  else if !formulafile = "" then
+    print_endline usage_string
+  else
+    (* read formula file *)
+    let f = analyze_formulafile () in
+    let f = if !negate then Neg f else f in
+    if !sigfile = "" then
+      print_endline usage_string
+    else
+      begin
+        (* read signature file *)
+        let sign = Log.get_signature !sigfile in
+        let _ = if is_mfodl f then Misc.verified := true else () in
+
+        let is_mon, pf, vartypes = check_formula sign f in
+        let fv = List.map fst vartypes in
+        if !sigout then
+          Predicate.print_vartypes_list vartypes
+        else if is_mon && not !Misc.checkf then
+          begin
+            if not !nofilterrelopt then
+              Filter_rel.enable pf;
+            if not !nofilteremptytpopt && not !Misc.verified then
+              Filter_empty_tp.enable pf;
+            if !analyze_hashing then
+              Hashing.analyze !hashing_mode pf
+            else if !testfilteropt then
+              Algorithm.test_filter !logfile pf
+            else
+              let _ = Log.get_signature !sigfile in
+              (* Test Slicing implementation *)
+              if !slicer_file <> "" then
+                Algorithm.run_test !slicer_file pf
+              (* start monitoring *)
+              else if !Algorithm.resumefile <> "" then
+                Algorithm.resume !logfile
+              else if !Algorithm.combine_files <> "" then
+                Algorithm.combine !logfile
+              else if !Misc.verified then
+                Algorithm_verified.monitor sign !logfile fv pf
+              else
+                (match !hashing_mode with
+                | None ->
+                  Algorithm.monitor !logfile fv pf
+                | Some m ->
+                  Algorithm.monitor_extformula !logfile fv (Hashing.convert m pf))
+          end
+      end
+
+let set_unfold_let = function
+  | "no" -> Rewriting.unfold_let := None
+  | "full" -> Rewriting.unfold_let := Some (Rewriting.ExpandAll)
+  | "smart" -> Rewriting.unfold_let := Some (Rewriting.ExpandNonshared)
+  | _ -> ()  (* impossible *)
+
+let set_hashing s =
+  let flags = String.split_on_char ',' s in
+  let parse_bits = function
+    | [] -> 0
+    | [x] -> int_of_string x
+    | _ -> raise (Arg.Bad "invalid argument for -hash")
+  in
+  match flags with
+  | ["bypass"] -> hashing_mode := None
+  | ["off"] -> hashing_mode := Some Hashing.Nothing
+  | "single"::l -> hashing_mode := Some (Hashing.Single (parse_bits l))
+  | "merged"::l -> hashing_mode := Some (Hashing.Merged (parse_bits l))
+  | _ -> raise (Arg.Bad "invalid argument for -hash")
+
+let _ =
+  Arg.parse (Arg.align [
+    "-sig", Arg.Set_string sigfile, "\tChoose the signature file";
+    "-formula", Arg.Set_string formulafile, "\tChoose the formula file";
+    "-negate", Arg.Set negate, "\tAnalyze the negation of the input formula";
+    "-log", Arg.Set_string logfile, "\tChoose the log file";
+    "-version", Arg.Set displayver, "\tDisplay the version (and exit)";
+    "-debug", Arg.Set_string debug, "\tChoose unit to debug, among 'eval', 'perf', 'log', 'formula', 'monitorable', 'filter'";
+    "-verbose", Arg.Set Misc.verbose, "\tTurn on verbose mode";
+    "-check", Arg.Set Misc.checkf, "\tCheck if formula is monitorable (and exit)";
+    "-no_rw", Arg.Set Rewriting.no_rw, "\tDisable formula rewriting";
+    "-sigout", Arg.Set sigout, "\tShow the output signature (and exit)";
+    "-unix", Arg.Set MFOTL.unixts, "\tTimestamps represent Unix time";
+    "-mem", Arg.Set memarg, "\tShow maximum memory usage on stderr";
+    "-nonewlastts", Arg.Clear Misc.new_last_ts, "\tDo not add a last maximal timestamp";
+    "-nofilterrel", Arg.Set nofilterrelopt, "\tDisable filter_rel module";
+    "-nofilteremptytp", Arg.Set nofilteremptytpopt, "\tDisable filter_empty_tp module";
+    "-testfilter", Arg.Set testfilteropt, "\tTest filter on the log without evaluating the formula";
+    "-stats", Arg.Set statsarg, "\tShow stats at the end of stdout";
+    "-forcegc", Arg.Set Misc.force_gc, "\tForce major GC collection after every time-point";
+    "-ignore_parse_errors", Arg.Set Misc.ignore_parse_errors, "\tIgnore log parse errors";
+    "-stop_at_out_of_order_ts", Arg.Set Misc.stop_at_out_of_order_ts, "\tStop monitoring when out-of-order timestamps encountered, otherwise issue warning";
+    "-stop_at_first_viol", Arg.Set Misc.stop_at_first_viol, "\tStop at first encountered violation";
+    "-load", Arg.Set_string Algorithm.resumefile, "\tLoad monitor state from file";
+    "-combine", Arg.Set_string Algorithm.combine_files, "\tComma separated partition files to combine";
+    "-slicer", Arg.Set_string slicer_file, "\tFile used to test slicer";
+    "-verified", Arg.Set Misc.verified, "\tRun Monpoly's verified kernel";
+    "-no_mw", Arg.Set Algorithm_verified.no_mw, "\tNo multi-way join (only with the verified kernel)";
+    "-unfold_let", Arg.Symbol (["no"; "full"; "smart"], set_unfold_let),
+      "\tControl unfolding of LET expressions in the formula (default 'no')";
+    "-hash", Arg.String set_hashing, "\tHashing mode (default 'bypass', or 'off', 'single[,bits]', 'merged[,bits]')";
+    "-analyze", Arg.Set analyze_hashing, "\tAnalyze error probabilities from hashing";
+    "-errprobs", Arg.Set Misc.show_error_estimate, "\tShow estimates of error probabilities";
+    "-seed", Arg.Int Random.init, "\tSet random generator seed";
+  ])
+    (fun _ -> ())
+    usage_string;
+  if Misc.debugging Dbg_perf then
+    ignore(Unix.alarm 600);
+  main ();
+  if !memarg then
+    prerr_endline (Misc.mem_max ());
+  if !statsarg then
+    Perf.dump_stats starttime
+
+
+

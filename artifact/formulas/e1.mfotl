@@ -1,0 +1,1 @@
+EXISTS a. (p(a) AND ONCE [0,9] q(a))

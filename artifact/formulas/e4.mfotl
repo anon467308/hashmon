@@ -1,0 +1,1 @@
+EXISTS a,b,c. ((p(a) AND ONCE q(b,c)) SINCE [0,9] (p(c) AND ONCE q(a,b)))

@@ -1,0 +1,1 @@
+EXISTS a,b. ((p(a) UNTIL [0,9] q(a,b)) AND NOT q(a,b))

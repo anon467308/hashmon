@@ -1,0 +1,1 @@
+EXISTS a. ((NOT p(a)) SINCE [0,9] q(a))

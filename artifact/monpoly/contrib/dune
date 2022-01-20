@@ -1,0 +1,9 @@
+(data_only_dirs clhash)
+(rule
+  (deps (source_tree clhash))
+  (targets libclhash.a)
+  (action
+    (no-infer
+      (progn
+        (chdir clhash (run make libclhash.a))
+        (copy clhash/libclhash.a libclhash.a)))))

@@ -1,0 +1,3 @@
+prop e4 :
+  ! (Exists a. Exists b. Exists c.
+    ((p(a) & P q(b,c)) S[<=9] (p(c) & P q(a,b))))
